@@ -1,0 +1,26 @@
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import { Context, Effect, Layer } from "effect";
+import * as schema from "./schema.ts";
+import type { DatabaseConfig } from "../config/env.ts";
+
+export class Database extends Context.Tag("Database")<
+  Database,
+  ReturnType<typeof drizzle<typeof schema>>
+>() {}
+
+export const DatabaseLive = (config: DatabaseConfig) =>
+  Layer.scoped(
+    Database,
+    Effect.gen(function* () {
+      const pool = new Pool({
+        connectionString: config.url,
+      });
+
+      yield* Effect.addFinalizer(() =>
+        Effect.promise(() => pool.end())
+      );
+
+      return drizzle(pool, { schema });
+    })
+  );
