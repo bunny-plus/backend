@@ -4,7 +4,8 @@ import { DiscordService } from "../services/discord.ts";
 import { SessionService } from "../services/session.ts";
 
 export const createAuthRoutes = (
-  runtime: ManagedRuntime.ManagedRuntime<DiscordService | SessionService, never>
+  runtime: ManagedRuntime.ManagedRuntime<DiscordService | SessionService, never>,
+  frontendUrl: string,
 ) =>
   new Elysia({ prefix: "/auth" })
     .get("/discord", async ({ set }) => {
@@ -33,10 +34,7 @@ export const createAuthRoutes = (
         const tokenResponse = yield* discord.exchangeCode(code);
         const user = yield* discord.getUser(tokenResponse.access_token);
 
-        const session = yield* sessionService.create(
-          user.id,
-          user.global_name ?? user.username
-        );
+        const session = yield* sessionService.create(user.id, user.global_name ?? user.username);
 
         return {
           session,
@@ -47,8 +45,9 @@ export const createAuthRoutes = (
       const result = await runtime.runPromise(program);
 
       set.status = 302;
-      set.headers["Location"] = "http://localhost:3000";
-      set.headers["Set-Cookie"] = `session_id=${result.session.id}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
+      set.headers["Location"] = frontendUrl;
+      set.headers["Set-Cookie"] =
+        `session_id=${result.session.id}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
 
       return;
     });

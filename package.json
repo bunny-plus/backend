@@ -6,13 +6,17 @@
   "scripts": {
     "dev": "bun --watch index.ts",
     "start": "bun index.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
     "lint": "tsgolint . --type-aware",
     "format": "oxfmt .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:test:setup": "docker exec bunnyplus-psql psql -U postgres -d postgres -c \"DROP DATABASE IF EXISTS bunnyplus_test\" && docker exec bunnyplus-psql psql -U postgres -d postgres -c \"CREATE DATABASE bunnyplus_test\" && docker exec bunnyplus-psql psql -U postgres -d bunnyplus_test -c \"GRANT ALL ON SCHEMA public TO bunnyplus\" && TEST_DATABASE_URL=postgresql://bunnyplus:bunnyplus@localhost:5432/bunnyplus_test bun run db:migrate"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.0",
     "drizzle-orm": "^0.45.1",
     "effect": "^3.19.13",
     "elysia": "^1.4.19",

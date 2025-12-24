@@ -5,7 +5,10 @@ import { sessions, type Session, type NewSession } from "../db/schema.ts";
 
 export class SessionError {
   readonly _tag = "SessionError";
-  constructor(readonly message: string, readonly cause?: unknown) {}
+  constructor(
+    readonly message: string,
+    readonly cause?: unknown,
+  ) {}
 }
 
 export class SessionService extends Context.Tag("SessionService")<
@@ -89,5 +92,5 @@ export const SessionServiceLive = Layer.effect(
           catch: (error) => new SessionError("Failed to cleanup sessions", error),
         }),
     });
-  })
+  }),
 );

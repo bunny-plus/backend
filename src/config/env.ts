@@ -3,7 +3,11 @@ import { Config } from "effect";
 export const DiscordClientId = Config.string("DISCORD_CLIENT_ID");
 export const DiscordClientSecret = Config.string("DISCORD_CLIENT_SECRET");
 export const DiscordRedirectUri = Config.string("DISCORD_REDIRECT_URI");
-export const AppUrl = Config.withDefault(Config.string("APP_URL"), "http://localhost:3000");
+export const AppUrl = Config.withDefault(Config.string("APP_URL"), "http://localhost:3001");
+export const FrontendUrl = Config.withDefault(
+  Config.string("FRONTEND_URL"),
+  "http://localhost:3000",
+);
 
 export const DiscordConfig = Config.all({
   clientId: DiscordClientId,
@@ -13,6 +17,12 @@ export const DiscordConfig = Config.all({
 });
 
 export type DiscordConfig = Config.Config.Success<typeof DiscordConfig>;
+
+export const AppConfig = Config.all({
+  frontendUrl: FrontendUrl,
+});
+
+export type AppConfig = Config.Config.Success<typeof AppConfig>;
 
 export const DatabaseUrl = Config.string("DATABASE_URL");
 

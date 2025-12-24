@@ -17,10 +17,8 @@ export const DatabaseLive = (config: DatabaseConfig) =>
         connectionString: config.url,
       });
 
-      yield* Effect.addFinalizer(() =>
-        Effect.promise(() => pool.end())
-      );
+      yield* Effect.addFinalizer(() => Effect.promise(async () => pool.end()));
 
       return drizzle(pool, { schema });
-    })
+    }),
   );
