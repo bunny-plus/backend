@@ -2,10 +2,12 @@ import { Elysia } from "elysia";
 import { Effect, ManagedRuntime } from "effect";
 import { DiscordService } from "../services/discord.ts";
 import { SessionService } from "../services/session.ts";
+import { UserService } from "../services/user.ts";
 
 export const createAuthRoutes = (
-  runtime: ManagedRuntime.ManagedRuntime<DiscordService | SessionService, never>,
+  runtime: ManagedRuntime.ManagedRuntime<DiscordService | SessionService | UserService, never>,
   frontendUrl: string,
+  requiredGuildId: string,
 ) =>
   new Elysia({ prefix: "/auth" })
     .get("/discord", async ({ set }) => {
@@ -30,11 +32,29 @@ export const createAuthRoutes = (
       const program = Effect.gen(function* () {
         const discord = yield* DiscordService;
         const sessionService = yield* SessionService;
+        const userService = yield* UserService;
 
         const tokenResponse = yield* discord.exchangeCode(code);
-        const user = yield* discord.getUser(tokenResponse.access_token);
+        const discordUser = yield* discord.getUser(tokenResponse.access_token);
+        const guilds = yield* discord.getUserGuilds(tokenResponse.access_token);
 
-        const session = yield* sessionService.create(user.id, user.global_name ?? user.username);
+        const isInRequiredGuild = guilds.some((guild) => guild.id === requiredGuildId);
+
+        if (!isInRequiredGuild) {
+          yield* Effect.fail({
+            _tag: "Unauthorized" as const,
+            message:
+              "You must be a member of the required Discord server to access this application.",
+          });
+        }
+
+        const user = yield* userService.upsert(
+          discordUser.id,
+          discordUser.global_name ?? discordUser.username,
+          discordUser.avatar,
+        );
+
+        const session = yield* sessionService.create(user.discordId);
 
         return {
           session,
@@ -42,12 +62,18 @@ export const createAuthRoutes = (
         };
       });
 
-      const result = await runtime.runPromise(program);
+      const result = await runtime.runPromiseExit(program);
+
+      if (result._tag === "Failure") {
+        set.status = 302;
+        set.headers["Location"] = `${frontendUrl}?error=unauthorized`;
+        return;
+      }
 
       set.status = 302;
       set.headers["Location"] = frontendUrl;
       set.headers["Set-Cookie"] =
-        `session_id=${result.session.id}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
+        `session_id=${result.value.session.id}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
 
       return;
     });

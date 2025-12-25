@@ -13,6 +13,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
+    "db:seed": "bun src/db/seed.ts",
     "db:test:setup": "docker exec bunnyplus-psql psql -U postgres -d postgres -c \"DROP DATABASE IF EXISTS bunnyplus_test\" && docker exec bunnyplus-psql psql -U postgres -d postgres -c \"CREATE DATABASE bunnyplus_test\" && docker exec bunnyplus-psql psql -U postgres -d bunnyplus_test -c \"GRANT ALL ON SCHEMA public TO bunnyplus\" && TEST_DATABASE_URL=postgresql://bunnyplus:bunnyplus@localhost:5432/bunnyplus_test bun run db:migrate"
   },
   "dependencies": {

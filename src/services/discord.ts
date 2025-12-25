@@ -9,6 +9,14 @@ export interface DiscordUser {
   global_name: string | null;
 }
 
+export interface DiscordGuild {
+  id: string;
+  name: string;
+  icon: string | null;
+  owner: boolean;
+  permissions: string;
+}
+
 export interface DiscordTokenResponse {
   access_token: string;
   token_type: string;
@@ -39,6 +47,16 @@ function isDiscordUser(data: unknown): data is DiscordUser {
   );
 }
 
+function isDiscordGuildArray(data: unknown): data is DiscordGuild[] {
+  if (!Array.isArray(data)) return false;
+
+  return data.every((guild): guild is DiscordGuild => {
+    if (typeof guild !== "object" || guild === null) return false;
+    if (!("id" in guild) || typeof guild.id !== "string") return false;
+    return true;
+  });
+}
+
 export class DiscordOAuthError {
   readonly _tag = "DiscordOAuthError";
   constructor(
@@ -53,6 +71,9 @@ export class DiscordService extends Context.Tag("DiscordService")<
     readonly getAuthUrl: (state: string) => Effect.Effect<string>;
     readonly exchangeCode: (code: string) => Effect.Effect<DiscordTokenResponse, DiscordOAuthError>;
     readonly getUser: (accessToken: string) => Effect.Effect<DiscordUser, DiscordOAuthError>;
+    readonly getUserGuilds: (
+      accessToken: string,
+    ) => Effect.Effect<DiscordGuild[], DiscordOAuthError>;
   }
 >() {}
 
@@ -66,7 +87,7 @@ export const DiscordServiceLive = (config: DiscordConfig) =>
             client_id: config.clientId,
             redirect_uri: config.redirectUri,
             response_type: "code",
-            scope: "identify",
+            scope: "identify guilds",
             state,
           });
           return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
@@ -126,6 +147,29 @@ export const DiscordServiceLive = (config: DiscordConfig) =>
             return data;
           },
           catch: (error) => new DiscordOAuthError("Failed to fetch user", error),
+        }),
+
+      getUserGuilds: (accessToken: string) =>
+        Effect.tryPromise({
+          try: async () => {
+            const response = await fetch("https://discord.com/api/users/@me/guilds", {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            });
+
+            if (!response.ok) {
+              const error = await response.text();
+              throw new Error(`Discord guilds fetch failed: ${error}`);
+            }
+
+            const data: unknown = await response.json();
+            if (!isDiscordGuildArray(data)) {
+              throw new Error("Invalid guilds response from Discord");
+            }
+            return data;
+          },
+          catch: (error) => new DiscordOAuthError("Failed to fetch guilds", error),
         }),
     }),
   );
