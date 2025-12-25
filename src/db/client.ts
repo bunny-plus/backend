@@ -15,7 +15,7 @@ export const DatabaseLive = (config: DatabaseConfig) =>
     Effect.gen(function* () {
       const pool = new Pool({
         connectionString: config.url,
-        ssl: config.url.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+        ssl: config.url.includes("sslmode=require") ? { rejectUnauthorized: false } : false,
       });
 
       yield* Effect.addFinalizer(() => Effect.promise(async () => pool.end()));

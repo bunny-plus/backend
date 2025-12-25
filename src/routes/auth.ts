@@ -46,7 +46,10 @@ export const createAuthRoutes = (
 
         console.log("[Auth] Fetching user guilds");
         const guilds = yield* discord.getUserGuilds(tokenResponse.access_token);
-        console.log("[Auth] User is in guilds:", guilds.map(g => ({ id: g.id, name: g.name })));
+        console.log(
+          "[Auth] User is in guilds:",
+          guilds.map((g) => ({ id: g.id, name: g.name })),
+        );
         console.log("[Auth] Required guild ID:", requiredGuildId);
 
         const isInRequiredGuild = guilds.some((guild) => guild.id === requiredGuildId);
