@@ -9,7 +9,7 @@
     "test": "bun test",
     "test:watch": "bun test --watch",
     "lint": "tsgolint . --type-aware",
-    "format": "oxfmt .",
+    "fmt": "oxfmt .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
