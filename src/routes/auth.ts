@@ -24,7 +24,10 @@ export const createAuthRoutes = (
     .get("/callback", async ({ query, set }) => {
       const { code, state } = query;
 
+      console.log("[Auth] Callback received", { hasCode: !!code, state });
+
       if (typeof code !== "string" || code.length === 0) {
+        console.error("[Auth] Missing authorization code");
         set.status = 400;
         return { error: "Missing authorization code" };
       }
@@ -34,13 +37,23 @@ export const createAuthRoutes = (
         const sessionService = yield* SessionService;
         const userService = yield* UserService;
 
+        console.log("[Auth] Exchanging code for token");
         const tokenResponse = yield* discord.exchangeCode(code);
+
+        console.log("[Auth] Fetching Discord user");
         const discordUser = yield* discord.getUser(tokenResponse.access_token);
+        console.log("[Auth] User:", { id: discordUser.id, username: discordUser.username });
+
+        console.log("[Auth] Fetching user guilds");
         const guilds = yield* discord.getUserGuilds(tokenResponse.access_token);
+        console.log("[Auth] User is in guilds:", guilds.map(g => ({ id: g.id, name: g.name })));
+        console.log("[Auth] Required guild ID:", requiredGuildId);
 
         const isInRequiredGuild = guilds.some((guild) => guild.id === requiredGuildId);
+        console.log("[Auth] Is in required guild:", isInRequiredGuild);
 
         if (!isInRequiredGuild) {
+          console.error("[Auth] User not in required guild");
           yield* Effect.fail({
             _tag: "Unauthorized" as const,
             message:
@@ -48,12 +61,14 @@ export const createAuthRoutes = (
           });
         }
 
+        console.log("[Auth] Upserting user");
         const user = yield* userService.upsert(
           discordUser.id,
           discordUser.global_name ?? discordUser.username,
           discordUser.avatar,
         );
 
+        console.log("[Auth] Creating session");
         const session = yield* sessionService.create(user.discordId);
 
         return {
@@ -65,11 +80,13 @@ export const createAuthRoutes = (
       const result = await runtime.runPromiseExit(program);
 
       if (result._tag === "Failure") {
+        console.error("[Auth] Authentication failed:", result.cause);
         set.status = 302;
         set.headers["Location"] = `${frontendUrl}?error=unauthorized`;
         return;
       }
 
+      console.log("[Auth] Authentication successful, redirecting to frontend");
       set.status = 302;
       set.headers["Location"] = frontendUrl;
       set.headers["Set-Cookie"] =
