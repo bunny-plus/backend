@@ -2,7 +2,7 @@ import { Elysia } from "elysia";
 import { Effect, ManagedRuntime } from "effect";
 import { RealtimeService } from "../services/realtime.ts";
 
-const connectedUsers = new Set<string>();
+const connectedUsers = new Map<string, number>(); // discordId -> lastHeartbeat timestamp
 let broadcastInterval: Timer | null = null;
 const subscribers = new Set<any>();
 
@@ -11,6 +11,14 @@ const broadcastUsers = async (runtime: ManagedRuntime.ManagedRuntime<RealtimeSer
     const program = RealtimeService.pipe(Effect.flatMap((service) => service.getOnlineUsers()));
 
     const allUsers = await runtime.runPromise(program);
+
+    const now = Date.now();
+    for (const [discordId, lastHeartbeat] of connectedUsers.entries()) {
+      if (now - lastHeartbeat > 15000) {
+        connectedUsers.delete(discordId);
+        console.log(`Removed stale user: ${discordId}`);
+      }
+    }
 
     const onlineUsers = allUsers.filter(user => connectedUsers.has(user.discordId));
 
@@ -51,15 +59,12 @@ export const createRealtimeRoutes = (
         try {
           const data = JSON.parse(message);
           if (data.type === "heartbeat" && data.discordId) {
-            connectedUsers.add(data.discordId);
-            setTimeout(() => {
-              if (!subscribers.has(ws)) {
-                connectedUsers.delete(data.discordId);
-              }
-            }, 10000);
+            connectedUsers.set(data.discordId, Date.now());
+            console.log(`Heartbeat from ${data.discordId}, ${connectedUsers.size} users online`);
           }
         } catch (e) {
-          console.error("Failed to parse WebSocket message:", e);}
+          console.error("Failed to parse WebSocket message:", e);
+        }
       }
     },
 
